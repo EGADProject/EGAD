@@ -1,5 +1,6 @@
 #given a melted program frame, dcast into matrix of indicator raw scores with student id and GA as id columns
-
+library(RColorBrewer)
+library(corrplot)
 
 # Program attribute correlation tables
 # Custom function to get correlations using plyr
@@ -25,5 +26,6 @@ p.a.efa <- function (df) {
   
   t.fit <- factanal(df[-1:-2], )
 }
+
 fa.parallel(c.temp[7:11])
 fit <- factanal(c.temp[3:6], 1, rotation="none")

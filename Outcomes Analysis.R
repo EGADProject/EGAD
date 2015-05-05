@@ -6,11 +6,15 @@ output.path <- "/Users/Jake/ownCloud/Faculty Outcomes Work/Department Data"
 
 # Adding required libraries ----
 library(gdata)
+library(magrittr)
+library(stargazer)
 library(ggplot2)
 library(plyr)
+library(dplyr)
 library(reshape2)
 library(data.table)
 library(gridExtra)
+library(ggthemes)
 
 
 # Read in departmental data to individual data frames from the master sheet ----
@@ -171,21 +175,23 @@ p.sp.atp_i <- function (df) {
 
 # Course-based Histogram --------------------------------------------------
 
-cb.hist <- ggplot(m.apsc, aes(x = p.level)) + 
+cb.hist <- ggplot(m.apsc100, aes(x = p.level)) + 
   geom_bar(aes(fill=p.level)) + 
   ylab("Count") + 
   facet_wrap(~indicator, scales = "fixed", ncol=3) +
-  theme(legend.position="none") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0)) +
-  #ggtitle("APSC 100:M1 Course Indicator Report") +
-  theme(text = element_text(size=20)) +
+  ggtitle("EDPS 101 Course Indicator Report") +
   xlab("Performance") + 
   xlim(c("Not Demonstrated","Marginal","Meets Expectations","High Quality", "Mastery")) +
-  scale_fill_brewer()  
+  scale_fill_brewer(palette = "Reds")  +
+  theme_hc() +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0)) +
+  theme(text = element_text(size=16))
+  
   
 
 # Course-based Line graph. Week Assessed by Aggregate Mean, by each indicator for each attribute ----
-cb.idl <- ggplot(m.apsc, aes(x = assessment_date, y = p.level)) + 
+cb.idl <- ggplot(m.apsc100, aes(x = assessment_date, y = p.level)) + 
   geom_line(aes(colour = indicator, group = indicator), size = 1, stat = 'summary', fun.y = mean) + 
   geom_point(aes(colour = indicator, shape = indicator, group = indicator), stat = 'summary', fun.y = mean) + 
   scale_shape_manual(values = c(0:25)) + 
@@ -196,16 +202,19 @@ cb.idl <- ggplot(m.apsc, aes(x = assessment_date, y = p.level)) +
   theme(text = element_text(size=20))
 
 # Program Year pannel chart ----
-p.ypc <- ggplot(m.qeng, aes(x=attribute, y=p.level)) + 
-  geom_point(aes(color = attribute, group = indicator, alpha=0.5), size=6, stat = 'summary', fun.y = mean) + 
+p.ypc <- ggplot(temp2, aes(x=attribute, y=p.level)) + 
+  geom_point(aes(color = factor(attribute), group = indicator, size=factor(n), alpha=0.8), stat = 'summary', fun.y = mean) + 
+  theme_hc() +
   theme(legend.position="none") + 
   xlab("Attribute") + 
   ylab("") + 
   facet_grid(program_year~.) + 
-  ggtitle(expression(atop("Queen's Engineering Attribute Performance", atop(italic("Each dot represents mean aggregate student performance on an indicator"), "")))) +
+  ggtitle(expression(atop("Engineering Program Attribute Performance", atop(italic("Each dot represents mean aggregate student performance on an indicator"), "")))) +
   #ggtitle("Queen's Engineering Attribute Performance") +
-  xlim(c("KB","PA","IN","DE","ET","TW","CO","PR","IM","EE","EC","LL")) +
-  theme(text = element_text(size=20))
+  #xlim(c("KB","PA","IN","DE","ET","TW","CO","PR","IM","EE","EC","LL")) +
+  xlim(c("PA","DE","CO","LL")) +
+  theme(text = element_text(size=20)) 
+ 
 
 # Course based overlaid histogram ----
 
@@ -221,8 +230,9 @@ cb.ohist<- ggplot(mea.apsc.2013b, aes(x=value, fill=assessment)) +
   
 # Historical overliad histogram ----
 
-cb.h_ohist<- ggplot(temp, aes(x=p.level, fill=academic_year)) +
+cb.h_ohist<- ggplot(m4.apsc100, aes(x=p.level, fill=academic_year)) +
   geom_bar() +
+  theme_hc() +
   xlab("Performance") + 
   ylab("Count") +  
   ggtitle("Indicator Comparison to Previous Years") +
@@ -231,7 +241,8 @@ cb.h_ohist<- ggplot(temp, aes(x=p.level, fill=academic_year)) +
   xlim(c("Not Demonstrated","Marginal","Meets Expectations","High Quality", "Mastery")) +
   theme(legend.position="none") +
   theme(axis.text.x = element_text(angle = 90, hjust = 0)) +
-  scale_fill_brewer(palette="Set1")
+  scale_fill_brewer(palette="Set1") +
+  theme(text = element_text(size=18)) 
 
 # Course-based line plot aggregate indicator performance ----
 
