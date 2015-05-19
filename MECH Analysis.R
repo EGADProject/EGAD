@@ -8,8 +8,6 @@ library(reshape2)
 library(ggplot2)
 library(ggthemes)
 library(knitr)
-library(sparkline)
-library(htmlwidgets)
 
 # ########
 # TO-DO
