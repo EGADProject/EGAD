@@ -9,26 +9,19 @@ library(ggplot2)
 library(ggthemes)
 library(knitr)
 
-# ########
-# TO-DO
-#
-# 1. Many courses contain duplicate measures.
-# 2. For those frames, melt all columns
-# 3. rename duplicates (often having a .1 or .2),
-# 4. cast back out with mean as an aggregate function.
-# 5. Bind all frames together
-#
-# ########
-
-
 # Build function to read sheets, letting sheet be the variable to get passed via lapply ----
 read.files <- . %>%
 {
   read_excel(mech.file,.,skip = 1)
 }
 
-# Set working directory and file paths ----
-setwd("~/ownCloud/Faculty Outcomes Work/Department Data/MECH")
+# Set directories and file paths ----
+
+##Project Dir
+R <- "~/ownCloud/Projects/R/Projects/EGAD/R"
+
+## Working Directory
+out.dir <- "~/ownCloud/Faculty Outcomes Work/Department Data/MECH/Reports/2014-2015"
 
 ## Path to recent MECH data file
 mech.file <-
@@ -38,6 +31,7 @@ mech.file <-
 mech.sheets <- excel_sheets(mech.file)
 mech.sheets <-
   mech.sheets[grep("Outcomes R", mech.sheets, ignore.case = TRUE)]
+
 
 # Extract courses, indicators and descriptives from MECH sheets ----
 
@@ -52,22 +46,43 @@ mech.indicators <- read_excel(mech.file, 3, col_names = TRUE) %>%
 ## Create mech course table
 mech.courses <- mech.indicators %>%
   select(term, prog,year, `course(s)`) %>%
-  rename(
-    Semester = term, DEPT = prog , Program_year = year, course_code = `course(s)`
-  ) %>%
+  plyr::rename(c("term" = "Semester", "prog"= "DEPT" , "year"= "Program_year","course(s)"="course_code")) %>%
   left_join(data.frame(course_code = unlist(mech.courses)),.) %>%
   unique
 
 ## Add missing information
 mech.courses[mech.courses$course_code == "CIVL 230", c(2:4)] <-
   c("F","CIVL",2)
-mech.courses[mech.courses$course_code == "MECH 396", c(2:4)] <-
+mech.courses[mech.courses$course_code == "MECH 398", c(2:4)] <-
   c("F","MECH",3)
 mech.courses[mech.courses$course_code == "MECH 216", c(2:4)] <-
   c("W","MECH",2)
 
 mech.courses %<>%
   na.omit
+
+# Get sheet names from files and extract course asssessment information ----
+info.sheets <- excel_sheets(mech.file)
+info.sheets <-
+  info.sheets[grep("Table 1", info.sheets, ignore.case = TRUE)]
+
+mech.course.data <- lapply(info.sheets, read.files) %>% 
+  set_names(mech.courses %>% 
+              filter(DEPT == "MECH") %>% 
+              select(course_code) %>%
+              unlist)
+
+mech.course.data %<>%
+  rbind.fill() %>% 
+  select(c(1,2,4:7)) %>% 
+  set_names(c("course_code",
+              "indicator",
+              "assessment",
+              "assessor",
+              "date_assessed",
+              "instructor_comments"))
+
+
 
 # Process all MECH course sheets, correcting information where needed ----
 ##Read and join all outcomes measures from MECH Courses: outputs a list
@@ -90,7 +105,7 @@ mech.outcomes.data <-
 ## Bind the elements of the list together, re-order the columns, outputs a data frame
 mech.outcomes.data %<>%
   rbind.fill() %>%
-  rename(STUDENT_ID = Student_ID) %>%
+  plyr::rename(c("Student_ID" = "STUDENT_ID")) %>%
   select(STUDENT_ID, ACADEMIC_YEAR, SEMESTER, COURSE_CODE, DEPT, PROGRAM_YEAR, everything()) %>%
   filter(DEPT == "MECH")
 
@@ -99,7 +114,6 @@ prev.mech <-
   "~/ownCloud/Faculty Outcomes Work/Department Data/Faculty-wide/Outcomes Data/Queen's Engineering Master.xlsx" %>%
   read_excel(sheet = "MECH") %>%
   select(-(ASSESSMENT:ASSESSMENT_DATE))
-
 
 # Rename last years indicators to 2014-2015 designation ----
 ## Create indicator name lookup-table
@@ -121,7 +135,6 @@ prev.mech.outcomes2 <- prev.mech %>%
   select(.,-one_of(intersect(lookup$old.indicator, colnames(.))))
 
 prev.mech <- bind_cols(prev.mech.outcomes2,prev.mech.outcomes1)
-
 
 # Bind the renamed previous years with this years list----
 full.mech.data <- rbind.fill(mech.outcomes.data,prev.mech)
@@ -160,61 +173,31 @@ m.mech %<>%
   filter(!is.na(description)>=1) %>% 
   bind_rows(.,na.m.mech)
 
+## String wrap the p.level for nice plotting
 m.mech$p.level %<>% str_wrap(width = 5)
 
+## Arrange the melted dataset 
+m.mech %<>%
+  arrange(academic_year,
+          course_code,
+          attribute,
+          indicator,
+          description) 
 
-# m.mech %>% 
-#   filter(academic_year == "2014-2015", attribute == "KB", program_year == 2) %>%
-#   select(value) %>%  
-#   sparkline(type = 'bar')
+## Factor the Attribute Column and reorder according to CEAB order
+m.mech$attribute %<>%
+  factor() %>% 
+  gdata::reorder.factor(new.order=c("KB","PA","IN","DE","ET","TW","CO","PR","IM","EE","EC","LL"))
+
+## Capture the arranged description, factor description (makes it alphabetic), and return it to original order
+
+sorted.description <- m.mech$description
+
+m.mech$description %<>%
+  factor() %>% 
+  gdata::reorder.factor((new.order=sorted.description))
 
 
 
-# Dashboard ----
-p.ypc <- function (df)
-{
-  ggplot(df, aes(x = attribute, y = p.level)) +
-    geom_point(
-      aes(
-        color = factor(attribute), group = indicator, size = 8, alpha = 0.5
-      ), position = "jitter", stat = 'summary', fun.y = mean
-    ) +
-    theme_bw() +
-    theme(legend.position = "none") +
-    xlab("Attribute") +
-    ylab("") +
-    facet_grid(program_year ~ academic_year) +
-    xlim(c(
-      "KB","PA","IN","DE","ET","TW","CO","PR","IM","EE","EC","LL"
-    )) +
-    ylim(str_wrap(
-      c(
-        "Not Demonstrated", "Marginal", "Meets Expectations", "High Quality", "Mastery"
-      ),width = 5
-    )) +
-    theme(text = element_text(size = 18))
-}
-
-m.mech %>%
-  p.ypc()
-
-## KB ----
-
-ga.hist <- function (df)
-{
-  ggplot(df, aes(x = p.level, fill = academic_year)) +
-    geom_bar() +
-    theme_bw() +
-    xlab("Performance") +
-    ylab("Count") +
-    facet_grid(description ~ academic_year, labeller = label_wrap_gen(width =
-                                                                        10)) +
-    xlim(str_wrap(
-      c(
-        "Not Demonstrated", "Marginal", "Meets Expectations", "High Quality", "Mastery"
-      ),width = 5
-    )) +
-    theme(legend.position = "none") +
-    theme(strip.text.y = element_text(angle = 0)) +
-    scale_fill_brewer(palette = "Set1")
-}
+##  plyr::dlply() call on the melted frame to produce plots for all courses
+#p.mech <- dlply(m.mech, .(course_code), function(x) cb.hist %+% x + ggtitle(paste(x$course_code, "Outcomes Report",sep=" ")))
