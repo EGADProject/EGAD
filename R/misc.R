@@ -105,7 +105,7 @@ cb.hist <- ggplot(m.mech, aes(x = p.level, fill = academic_year)) +
   scale_fill_brewer(palette = "Set1")
 
 
-## update case study figures
+## update case study figures to v3 ----
 
 m.qeng %>% 
   filter(academic_year=="2013-2014", attribute %in% c("PA","DE","CO","LL")) %>%
@@ -129,6 +129,7 @@ apsc.100$academic_year %<>%
   reorder.factor(new.order = c("2012-2013","2013-2014","2013-14"))
 
 apsc.100 %>%  
+  filter(academic_year=="2013-2014", !indicator %in% c("APSC-1-DE-2","APSC-1-DE-4","APSC-1-LL-3")) %>% 
   ga.hist
 
 ## Sparktable/sparklines exploration ----
