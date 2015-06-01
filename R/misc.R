@@ -1,3 +1,9 @@
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(reshape2)
+library(magrittr)
+library(stringr)
 
 course_report <- function(course_code, ...) {
 # Usage: 
@@ -51,12 +57,9 @@ p.ypc <- function (df)
     xlab("Attribute") +
     ylab("") +
     facet_grid(program_year ~ academic_year) +
-#     xlim(c(
-#       "KB","PA","IN","DE","ET","TW","CO","PR","IM","EE","EC","LL"
-#     )) +
     xlim(c(
-    "PA","DE","CO","LL"
-  )) +
+       "KB","PA","IN","DE","ET","TW","CO","PR","IM","EE","EC","LL"
+     )) +
     ylim(str_wrap(
       c(
         "Not Demonstrated", "Marginal", "Meets Expectations", "High Quality", "Mastery"
@@ -87,50 +90,6 @@ ga.hist <- function (df)
     scale_fill_brewer(palette = "Set1")
 }
 
-## Course Based Histogram ggplot object for course-based dlply ----
-cb.hist <- ggplot(m.mech, aes(x = p.level, fill = academic_year)) +
-  geom_bar() +
-  theme_bw() +
-  xlab("Performance") +
-  ylab("Count") +
-  facet_grid(description ~ academic_year, labeller = label_wrap_gen(width =
-                                                                      10)) +
-  xlim(str_wrap(
-    c(
-      "Not Demonstrated", "Marginal", "Meets Expectations", "High Quality", "Mastery"
-    ),width = 5
-  )) +
-  theme(legend.position = "none") +
-  theme(strip.text.y = element_text(angle = 0)) +
-  scale_fill_brewer(palette = "Set1")
-
-
-## update case study figures to v3 ----
-
-m.qeng %>% 
-  filter(academic_year=="2013-2014", attribute %in% c("PA","DE","CO","LL")) %>%
-  p.ypc
-  
-apsc.100 <- m.qeng %>%
-  filter(attribute %in% c("PA","DE","CO","LL"), course_code=="APSC 100 M1", assessment=="MEA2")
-
-apsc.100$p.level %<>% str_wrap(width=5)
-
-indicators <- read_excel(mech.file, 6, col_names = TRUE, skip = 1) %>%
-  set_names(tolower(names(.)))
-
-indicators$indicator %<>% str_replace_all("-", ".")
-
-apsc.100$description <- indicators$short[match(apsc.100$indicator,indicators$indicator)]
-
-apsc.100$indicator %<>% str_replace_all("[.]", "-")
-
-apsc.100$academic_year %<>%
-  reorder.factor(new.order = c("2012-2013","2013-2014","2013-14"))
-
-apsc.100 %>%  
-  filter(academic_year=="2013-2014", !indicator %in% c("APSC-1-DE-2","APSC-1-DE-4","APSC-1-LL-3")) %>% 
-  ga.hist
 
 ## Sparktable/sparklines exploration ----
 library(sparkTable)
